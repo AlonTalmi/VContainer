@@ -112,6 +112,19 @@ namespace VContainer
             return this;
         }
 
+        public RegistrationBuilder WithParameter<TInterface, TImplement>()
+            where TImplement : TInterface
+        {
+            Parameters = Parameters ?? new List<IInjectParameter>();
+            Parameters.Add(new InstanceProviderParameter(typeof(TInterface), typeof(TImplement)));
+            return this;
+        }
+        
+        public RegistrationBuilder WithParameter<T>()
+        {
+            return WithParameter<T, T>();
+        }
+        
         public RegistrationBuilder WithParameter<TParam>(TParam value)
         {
             return WithParameter(typeof(TParam), value);

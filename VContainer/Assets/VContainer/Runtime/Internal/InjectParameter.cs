@@ -1,7 +1,29 @@
 using System;
+using System.Collections.Generic;
 
 namespace VContainer.Internal
 {
+    sealed class InstanceProviderParameter : IInjectParameter
+    {
+        public readonly Type InterfaceType;
+        public readonly IInjector Injector;
+        public readonly IReadOnlyList<IInjectParameter> CustomParameters;
+
+        public InstanceProviderParameter(Type interfaceType, Type implementType, IReadOnlyList<IInjectParameter> customParameters = null)
+        {
+            InterfaceType = interfaceType;
+            CustomParameters = customParameters;
+            Injector = InjectorCache.GetOrBuild(implementType);
+        }
+        
+        public bool Match(Type parameterType, string _) => parameterType == InterfaceType;
+
+        public object GetValue(IObjectResolver resolver)
+        {
+            return Injector.CreateInstance(resolver, CustomParameters);
+        }
+    }
+    
     sealed class TypedParameter : IInjectParameter
     {
         public readonly Type Type;
