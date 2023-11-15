@@ -298,6 +298,19 @@ namespace VContainer.Tests
             Assert.That(resolved, Is.InstanceOf<ServiceA>());
             Assert.That(resolved.Service2, Is.InstanceOf<NoDependencyServiceA>());
         }
+        
+        [Test]
+        public void RegisterValueTypeFromFunc()
+        {
+            var builder = new ContainerBuilder();
+            builder.Register<GenericsService<bool>>(Lifetime.Transient);
+
+            builder.Register(_ => true, Lifetime.Scoped);
+
+            var container = builder.Build();
+            var resolved = container.Resolve<GenericsService<bool>>();
+            Assert.That(resolved.ParameterService, Is.True);
+        }
 
         [Test]
         public void RegisterFromFuncWithInterface()
@@ -548,6 +561,36 @@ namespace VContainer.Tests
 
             var ctorInjectable = new ServiceA(new NoDependencyServiceA());
             Assert.DoesNotThrow(() => container.Inject(ctorInjectable));
+        }
+
+        [Test]
+        public void RegisterWithCallback()
+        {
+            {
+                NoDependencyServiceA fromCallback = null;
+            
+                var builder = new ContainerBuilder();
+                builder.Register<NoDependencyServiceA>(Lifetime.Scoped, (service, _) => fromCallback = service);
+
+                var container = builder.Build();
+
+                var fromResolve = container.Resolve<NoDependencyServiceA>();
+                
+                Assert.That(fromResolve, Is.Not.Null.And.EqualTo(fromCallback));
+            }
+            
+            {
+                NoDependencyServiceA fromCallback = null;
+            
+                var builder = new ContainerBuilder();
+                builder.Register(_ => new NoDependencyServiceA(), Lifetime.Scoped, (service, _) => fromCallback = service);
+
+                var container = builder.Build();
+
+                var fromResolve = container.Resolve<NoDependencyServiceA>();
+                
+                Assert.That(fromResolve, Is.Not.Null.And.EqualTo(fromCallback));
+            }
         }
     }
 }
