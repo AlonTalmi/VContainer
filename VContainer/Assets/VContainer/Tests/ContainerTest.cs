@@ -399,6 +399,37 @@ namespace VContainer.Tests
                 var resolved = container.Resolve<HasMethodInjection>();
                 Assert.That(resolved.Service2, Is.EqualTo(paramValue));
             }
+
+            {
+                var builder = new ContainerBuilder();
+                builder.Register<HasMethodInjection>(Lifetime.Scoped)
+                    .WithParameter<I2, NoDependencyServiceA>();
+
+                var container = builder.Build();
+                var resolved = container.Resolve<HasMethodInjection>();
+                Assert.That(resolved.Service2, Is.Not.Null);
+            }
+            
+            {
+                var builder = new ContainerBuilder();
+                builder.Register<GenericsService<NoDependencyServiceA>>(Lifetime.Scoped)
+                    .WithParameter<NoDependencyServiceA>();
+
+                var container = builder.Build();
+                var resolved = container.Resolve<GenericsService<NoDependencyServiceA>>();
+                Assert.That(resolved.ParameterService, Is.Not.Null);
+            }
+            
+            {
+                var builder = new ContainerBuilder();
+                builder.Register<I2, NoDependencyServiceA>(Lifetime.Scoped);
+                builder.Register<HasMethodInjection>(Lifetime.Scoped)
+                    .WithParameter(resolver => resolver.Resolve<I2>());
+
+                var container = builder.Build();
+                var resolved = container.Resolve<HasMethodInjection>();
+                Assert.That(resolved.Service2, Is.Not.Null);
+            }
         }
 
         [Test]
