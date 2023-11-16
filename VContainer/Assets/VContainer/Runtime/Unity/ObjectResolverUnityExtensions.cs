@@ -1,4 +1,5 @@
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace VContainer.Unity
 {
@@ -101,6 +102,78 @@ namespace VContainer.Unity
             {
                 prefab.gameObject.SetActive(wasActive);
                 instance.gameObject.SetActive(wasActive);
+            }
+
+            return instance;
+        }
+
+        public static T InstantiateAsChildScope<T>(this LifetimeScope scope, T prefab)
+            where T : Component
+        {
+            return scope.InstantiateAsChildScope(prefab, prefab.transform.position, prefab.transform.rotation);
+        }
+        
+        public static T InstantiateAsChildScope<T>(this LifetimeScope scope, T prefab, Vector3 position, Quaternion rotation)
+            where T : Component
+        {
+            var wasActive = prefab.gameObject.activeSelf;
+            prefab.gameObject.SetActive(false);
+
+            using var disposable = LifetimeScope.EnqueueParent(scope);
+            T instance;
+            if (scope.IsRoot)
+            {
+                instance = UnityEngine.Object.Instantiate(prefab, position, rotation);
+                UnityEngine.Object.DontDestroyOnLoad(instance);
+            }
+            else
+            {
+                // Into the same scene as LifetimeScope
+                instance = UnityEngine.Object.Instantiate(prefab, position, rotation, scope.transform);
+                instance.transform.SetParent(null);
+            }
+
+            SetName(instance, prefab);
+
+            try
+            {
+                if (!instance.TryGetComponent<LifetimeScope>(out _))
+                    scope.Container.InjectGameObject(instance.gameObject);
+            }
+            finally
+            {
+                prefab.gameObject.SetActive(wasActive);
+                instance.gameObject.SetActive(wasActive);
+            }
+
+            return instance;
+        }
+
+        public static T InstantiateAsChildScope<T>(this LifetimeScope scope, T prefab, Transform parent)
+            where T : Component
+        {
+            return scope.InstantiateAsChildScope(prefab, prefab.transform.position, prefab.transform.rotation, parent);
+        }
+        
+        public static T InstantiateAsChildScope<T>(this LifetimeScope scope, T prefab, Vector3 position, Quaternion rotation, Transform parent)
+            where T : Component
+        {
+            var prefabActive = prefab.gameObject.activeSelf;
+            prefab.gameObject.SetActive(false);
+
+            using var disposable = LifetimeScope.EnqueueParent(scope);
+            var instance = Object.Instantiate(prefab, position, rotation, parent);
+            
+            prefab.gameObject.SetActive(prefabActive);
+
+            try
+            {
+                if (!instance.TryGetComponent<LifetimeScope>(out _))
+                    scope.Container.InjectGameObject(instance.gameObject);
+            }
+            finally
+            {
+                instance.gameObject.SetActive(prefabActive);
             }
 
             return instance;
