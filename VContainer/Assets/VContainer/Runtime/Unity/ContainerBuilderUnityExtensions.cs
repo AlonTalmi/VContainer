@@ -117,7 +117,7 @@ namespace VContainer.Unity
             this IContainerBuilder builder,
             TInterface component)
         {
-            var registrationBuilder = new ComponentRegistrationBuilder(component).As(typeof(TInterface));
+            var registrationBuilder = new FromExistingComponentRegistrationBuilder(component).As(typeof(TInterface));
             // Force inject execution
             builder.RegisterBuildCallback(container => container.Resolve<TInterface>());
             return builder.Register(registrationBuilder);
@@ -130,7 +130,7 @@ namespace VContainer.Unity
             var lifetimeScope = (LifetimeScope)builder.ApplicationOrigin;
             var scene = lifetimeScope.gameObject.scene;
 
-            var registrationBuilder = new ComponentRegistrationBuilder(scene, type);
+            var registrationBuilder = new FromHierarchyComponentRegistrationBuilder(scene, type);
             // Force inject execution
             builder.RegisterBuildCallback(
                 container =>
@@ -156,7 +156,7 @@ namespace VContainer.Unity
             Lifetime lifetime,
             string newGameObjectName = null)
         {
-            return builder.Register(new ComponentRegistrationBuilder(newGameObjectName, type, lifetime));
+            return builder.Register(new FromNewGameObjectComponentRegistrationBuilder(newGameObjectName, type, lifetime));
         }
 
         public static ComponentRegistrationBuilder RegisterComponentOnNewGameObject<T>(
@@ -174,7 +174,7 @@ namespace VContainer.Unity
             Component prefab,
             Lifetime lifetime)
         {
-            var componentRegistrationBuilder = builder.Register(new ComponentRegistrationBuilder(_ => prefab, prefab.GetType(), lifetime));
+            var componentRegistrationBuilder = builder.Register(new FromPrefabComponentRegistrationBuilder(_ => prefab, prefab.GetType(), lifetime));
             componentRegistrationBuilder.As(interfaceType);
             return componentRegistrationBuilder;
         }
@@ -194,7 +194,7 @@ namespace VContainer.Unity
             Lifetime lifetime)
             where T : Component
         {
-            return builder.Register(new ComponentRegistrationBuilder(prefab, typeof(T), lifetime));
+            return builder.Register(new FromPrefabComponentRegistrationBuilder(prefab, typeof(T), lifetime));
         }
         
         public static ComponentRegistrationBuilder RegisterComponentInNewPrefab<TInterface, TImplement>(
@@ -203,7 +203,7 @@ namespace VContainer.Unity
             Lifetime lifetime)
             where TImplement : Component, TInterface
         {
-            var componentRegistrationBuilder = builder.Register(new ComponentRegistrationBuilder(prefab, typeof(TImplement), lifetime));
+            var componentRegistrationBuilder = builder.Register(new FromPrefabComponentRegistrationBuilder(prefab, typeof(TImplement), lifetime));
             componentRegistrationBuilder.As<TInterface>();
             return componentRegistrationBuilder;
         }
