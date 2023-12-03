@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 
 namespace VContainer.Diagnostics
 {
     public static class DiagnositcsContext
     {
 #if UNITY_EDITOR        
+        //Prevents garbage collection on ALL injected instanced
         public static Dictionary<object, int> injectionCount { get; private set; }
 #endif
         
@@ -65,7 +65,7 @@ namespace VContainer.Diagnostics
             injectionCount[injectedInstance] = injectionCount.GetValueOrDefault(injectedInstance) + 1;
             
             if(injectionCount[injectedInstance] > 1)
-                Debug.LogWarning($"Duplicated injection in {injectedInstance} ({injectedInstanceType.Name})", injectedInstance as UnityEngine.Object);
+                UnityEngine.Debug.LogWarning($"Duplicated injection in {injectedInstance} ({injectedInstanceType.Name})", injectedInstance as UnityEngine.Object);
         }
 #endif
     }
