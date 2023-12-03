@@ -25,8 +25,10 @@ namespace VContainer.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Inject(object instance, IObjectResolver resolver, IReadOnlyList<IInjectParameter> parameters)
         {
+#if UNITY_EDITOR
             if (VContainerSettings.DiagnosticsEnabled)
                 DiagnositcsContext.RegisterInjection(instance, instance.GetType(), this);
+#endif
                     
             InjectFields(instance, resolver, parameters);
             InjectProperties(instance, resolver, parameters);

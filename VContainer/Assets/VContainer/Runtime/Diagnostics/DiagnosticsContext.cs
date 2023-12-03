@@ -7,7 +7,9 @@ namespace VContainer.Diagnostics
 {
     public static class DiagnositcsContext
     {
+#if UNITY_EDITOR        
         public static Dictionary<object, int> injectionCount { get; private set; }
+#endif
         
         static readonly Dictionary<string, DiagnosticsCollector> collectors
             = new Dictionary<string, DiagnosticsCollector>();
@@ -56,6 +58,7 @@ namespace VContainer.Diagnostics
             return GetDiagnosticsInfos().FirstOrDefault(x => x.ResolveInfo.Registration == registration);
         }
 
+#if UNITY_EDITOR        
         public static void RegisterInjection(object injectedInstance, Type injectedInstanceType, IInjector injector)
         {
             injectionCount ??= new Dictionary<object, int>();
@@ -64,5 +67,6 @@ namespace VContainer.Diagnostics
             if(injectionCount[injectedInstance] > 1)
                 Debug.LogWarning($"Duplicated injection in {injectedInstance} ({injectedInstanceType.Name})");
         }
+#endif
     }
 }
