@@ -6,11 +6,6 @@ namespace VContainer.Diagnostics
 {
     public static class DiagnositcsContext
     {
-#if UNITY_EDITOR        
-        //Prevents garbage collection on ALL injected instanced
-        public static Dictionary<object, int> injectionCount { get; private set; }
-#endif
-        
         static readonly Dictionary<string, DiagnosticsCollector> collectors
             = new Dictionary<string, DiagnosticsCollector>();
 
@@ -59,13 +54,20 @@ namespace VContainer.Diagnostics
         }
 
 #if UNITY_EDITOR        
+        public static Dictionary<int, int> injectionCount { get; private set; }
+        
         public static void RegisterInjection(object injectedInstance, Type injectedInstanceType, IInjector injector)
         {
-            injectionCount ??= new Dictionary<object, int>();
-            injectionCount[injectedInstance] = injectionCount.GetValueOrDefault(injectedInstance) + 1;
+            if(injectedInstance is not UnityEngine.Object unityObj)
+                return;
+
+            //I'm using instance id to not block the garbage collector from collection, another option is using WeakReference then we can support all types
+            var instanceID = unityObj.GetInstanceID();
+            injectionCount ??= new Dictionary<int, int>();
+            injectionCount[instanceID] = injectionCount.GetValueOrDefault(instanceID) + 1;
             
-            if(injectionCount[injectedInstance] > 1)
-                UnityEngine.Debug.LogWarning($"Duplicated injection in {injectedInstance} ({injectedInstanceType.Name})", injectedInstance as UnityEngine.Object);
+            if(injectionCount[instanceID] > 1)
+                Debug.LogWarning($"Duplicated injection in {injectedInstance} ({injectedInstanceType.Name})");
         }
 #endif
     }
