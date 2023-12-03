@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using VContainer.Diagnostics;
+using VContainer.Unity;
 
 namespace VContainer.Internal
 {
@@ -23,6 +25,9 @@ namespace VContainer.Internal
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Inject(object instance, IObjectResolver resolver, IReadOnlyList<IInjectParameter> parameters)
         {
+            if (VContainerSettings.DiagnosticsEnabled)
+                DiagnositcsContext.RegisterInjection(instance, instance.GetType(), this);
+                    
             InjectFields(instance, resolver, parameters);
             InjectProperties(instance, resolver, parameters);
             InjectMethods(instance, resolver, parameters);

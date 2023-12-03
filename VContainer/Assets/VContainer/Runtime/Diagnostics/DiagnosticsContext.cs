@@ -1,11 +1,14 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 namespace VContainer.Diagnostics
 {
     public static class DiagnositcsContext
     {
+        public static Dictionary<object, int> injectionCount { get; private set; }
+        
         static readonly Dictionary<string, DiagnosticsCollector> collectors
             = new Dictionary<string, DiagnosticsCollector>();
 
@@ -51,6 +54,15 @@ namespace VContainer.Diagnostics
         internal static DiagnosticsInfo FindByRegistration(Registration registration)
         {
             return GetDiagnosticsInfos().FirstOrDefault(x => x.ResolveInfo.Registration == registration);
+        }
+
+        public static void RegisterInjection(object injectedInstance, Type injectedInstanceType, IInjector injector)
+        {
+            injectionCount ??= new Dictionary<object, int>();
+            injectionCount[injectedInstance] = injectionCount.GetValueOrDefault(injectedInstance) + 1;
+            
+            if(injectionCount[injectedInstance] > 1)
+                Debug.LogWarning($"Duplicated injection in {injectedInstance} ({injectedInstanceType.Name})");
         }
     }
 }
