@@ -65,7 +65,7 @@ namespace VContainer.Diagnostics
             injectionCount[injectedInstance] = injectionCount.GetValueOrDefault(injectedInstance) + 1;
             
             if(injectionCount[injectedInstance] > 1)
-                Debug.LogWarning($"Duplicated injection in {injectedInstance} ({injectedInstanceType.Name})");
+                Debug.LogWarning($"Duplicated injection in {injectedInstance} ({injectedInstanceType.Name})", injectedInstance as UnityEngine.Object);
         }
 #endif
     }
