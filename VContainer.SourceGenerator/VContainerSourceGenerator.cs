@@ -37,7 +37,7 @@ namespace VContainer.SourceGenerator
 
                 try
                 {
-                    CreateCodeBuilderForType(builder, typeMeta, references);
+                    BuildInjectorForType(builder, typeMeta, references);
                     builder.Build(codeWriter);
                 }
                 catch (CodeBuildFailedException codeBuildFailedException)
@@ -62,7 +62,7 @@ namespace VContainer.SourceGenerator
             }
         }
 
-        static void CreateCodeBuilderForType(CodeBuilder.CodeBuilder codeBuilder, TypeMeta typeMeta, ReferenceSymbols references)
+        static void BuildInjectorForType(CodeBuilder.CodeBuilder codeBuilder, TypeMeta typeMeta, ReferenceSymbols references)
         {
             if (typeMeta.IsNested() && !typeMeta.Symbol.CanBeCallFromInternal())
             {
