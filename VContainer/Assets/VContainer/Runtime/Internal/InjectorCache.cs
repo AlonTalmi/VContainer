@@ -13,7 +13,7 @@ namespace VContainer.Internal
             return Injectors.GetOrAdd(type, key =>
             {
                 // SourceGenerator
-                var generatedType = key.Assembly.GetType($"{key.FullName}GeneratedInjector", false);
+                var generatedType = key.Assembly.GetType(GetGeneratedInjectorName(type), false);
                 if (generatedType != null)
                 {
                     return (IInjector)Activator.CreateInstance(generatedType);
@@ -27,6 +27,11 @@ namespace VContainer.Internal
                 }
                 return ReflectionInjector.Build(key);
             });
+        }
+
+        public static string GetGeneratedInjectorName(Type type)
+        {
+            return $"{type.FullName}GeneratedInjector".Replace("+", "_");
         }
     }
 }

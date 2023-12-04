@@ -38,10 +38,10 @@ namespace VContainer.SourceGenerator
             defaultSeverity: DiagnosticSeverity.Error,
             isEnabledByDefault: true);
 
-        public static readonly DiagnosticDescriptor NestedNotSupported = new(
+        public static readonly DiagnosticDescriptor PrivateNestedNotSupported = new(
             id: "VCON0005",
-            title: "Nested type is not support to code generation.",
-            messageFormat: "The injectable object '{0}' is a nested type. It cannot support code generation ",
+            title: "Private nested type is not support to code generation.",
+            messageFormat: "The injectable object '{0}' is a private nested type. It cannot support code generation ",
             category: Category,
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true);

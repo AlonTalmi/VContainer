@@ -54,9 +54,9 @@ namespace VContainer.SourceGenerator
                 }
 
                 var fullType = typeMeta.FullTypeName
-                    .Replace("global::", "")
                     .Replace("<", "_")
-                    .Replace(">", "_");
+                    .Replace(">", "_")
+                    .Replace(".", "_");
 
                 context.AddSource($"{fullType}GeneratedInjector.g.cs", codeWriter.ToString());
             }
@@ -64,9 +64,9 @@ namespace VContainer.SourceGenerator
 
         static void CreateCodeBuilderForType(CodeBuilder.CodeBuilder codeBuilder, TypeMeta typeMeta, ReferenceSymbols references)
         {
-            if (typeMeta.IsNested())
+            if (typeMeta.IsNested() && !typeMeta.Symbol.CanBeCallFromInternal())
             {
-                throw new CodeBuildFailedException(DiagnosticDescriptors.NestedNotSupported);
+                throw new CodeBuildFailedException(DiagnosticDescriptors.PrivateNestedNotSupported);
             }
 
             if (typeMeta.Symbol.IsAbstract)
@@ -79,15 +79,13 @@ namespace VContainer.SourceGenerator
                 throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
             }
 
-            var builder = codeBuilder
+            var scope = codeBuilder
                 .AddUsing("System")
                 .AddUsing("System.Collections.Generic")
                 .AddUsing("VContainer")
                 .Space()
                 .AddLine("//Created using CodeBuilder")
                 .Space();
-
-            IScope scope = builder;
 
             var ns = typeMeta.Symbol.ContainingNamespace;
             if (!ns.IsGlobalNamespace)
@@ -98,9 +96,9 @@ namespace VContainer.SourceGenerator
             var definition = ObjectDefinition.ClassDefault.WithInterface("IInjector");
 
             var typeName = typeMeta.TypeName
-                .Replace("global::", "")
                 .Replace("<", "_")
-                .Replace(">", "_");
+                .Replace(">", "_")
+                .Replace(".", "_");
 
             var generateTypeName = $"{typeName}GeneratedInjector";
 
@@ -108,7 +106,7 @@ namespace VContainer.SourceGenerator
             scope.Space();
             CreateInstanceMethod(scope, typeMeta, references);
             scope.Space();
-            CreateInjectMethod(scope, typeMeta, references);
+            CreateInjectMethod(scope, typeMeta);
             scope.Space();
         }
 
@@ -152,7 +150,7 @@ namespace VContainer.SourceGenerator
             else if (constructorSymbol is null)
             {
                 scope
-                    .AddLine($"var __instance = new {typeMeta.TypeName}();")
+                    .AddLine($"{typeMeta.TypeName} __instance = new {typeMeta.TypeName}();")
                     .AddLine("Inject(__instance, resolver, parameters);")
                     .AddLine("return __instance;");
             }
@@ -162,7 +160,7 @@ namespace VContainer.SourceGenerator
                     .Select(param =>
                     {
                         var paramType =
-                            param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat).Replace("global::", "");
+                            param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
                         var paramName = param.Name;
                         return (paramType, paramName);
                     })
@@ -173,13 +171,13 @@ namespace VContainer.SourceGenerator
 
                 scope
                     .AddLines(resolveLines)
-                    .AddLine($"var __instance = new {typeMeta.TypeName}({string.Join(", ", arguments)});")
+                    .AddLine($"{typeMeta.TypeName} __instance = new {typeMeta.TypeName}({string.Join(", ", arguments)});")
                     .AddLine("Inject(__instance, resolver, parameters);")
                     .AddLine("return __instance;");
             }
         }
 
-        static void CreateInjectMethod(IScope scope, TypeMeta typeMeta, ReferenceSymbols references)
+        static void CreateInjectMethod(IScope scope, TypeMeta typeMeta)
         {
             scope = scope.StartMethodScope(
                 AccessibilityLevel.Public,
@@ -230,23 +228,21 @@ namespace VContainer.SourceGenerator
                 {
                     throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
                 }
-                
+
                 scope.AddLine($"var __x = ({typeMeta.TypeName})instance;");
 
                 foreach (var fieldSymbol in typeMeta.InjectFields)
                 {
                     var fieldTypeName = fieldSymbol.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-                    scope.AddLine(
-                        $"__x.{fieldSymbol.Name} = ({fieldTypeName})resolver.ResolveOrParameter(typeof({fieldTypeName}), \"{fieldSymbol.Name}\", parameters);");
+                    scope.AddLine($"__x.{fieldSymbol.Name} = ({fieldTypeName})resolver.ResolveOrParameter(typeof({fieldTypeName}), \"{fieldSymbol.Name}\", parameters);");
                 }
 
                 foreach (var propSymbol in typeMeta.InjectProperties)
                 {
                     var propTypeName = propSymbol.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
 
-                    scope.AddLine(
-                        $"__x.{propSymbol.Name} = ({propTypeName})resolver.ResolveOrParameter(typeof({propTypeName}), \"{propSymbol.Name}\", parameters);");
+                    scope.AddLine($"__x.{propSymbol.Name} = ({propTypeName})resolver.ResolveOrParameter(typeof({propTypeName}), \"{propSymbol.Name}\", parameters);");
                 }
 
                 foreach (var methodSymbol in typeMeta.InjectMethods)
@@ -263,8 +259,7 @@ namespace VContainer.SourceGenerator
 
                     foreach (var (paramType, paramName) in parameters)
                     {
-                        scope.AddLine(
-                            $"var __{paramName} = resolver.ResolveOrParameter(typeof({paramType}), \"{paramName}\", parameters);");
+                        scope.AddLine($"var __{paramName} = resolver.ResolveOrParameter(typeof({paramType}), \"{paramName}\", parameters);");
                     }
 
                     var arguments = parameters.Select(x => $"({x.paramType})__{x.paramName}");

@@ -29,8 +29,31 @@ namespace VContainer.SourceGenerator
             Symbol = symbol;
             this.references = references;
 
-            TypeName = symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
-            FullTypeName = symbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+            var nameFormat = new SymbolDisplayFormat(
+                globalNamespaceStyle: SymbolDisplayGlobalNamespaceStyle.Omitted,
+                typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypes,
+                genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
+                memberOptions:
+                SymbolDisplayMemberOptions.IncludeParameters |
+                SymbolDisplayMemberOptions.IncludeType |
+                SymbolDisplayMemberOptions.IncludeRef |
+                SymbolDisplayMemberOptions.IncludeContainingType,
+                kindOptions:
+                SymbolDisplayKindOptions.IncludeMemberKeyword,
+                parameterOptions:
+                SymbolDisplayParameterOptions.IncludeName |
+                SymbolDisplayParameterOptions.IncludeType |
+                SymbolDisplayParameterOptions.IncludeParamsRefOut |
+                SymbolDisplayParameterOptions.IncludeDefaultValue,
+                localOptions: SymbolDisplayLocalOptions.IncludeType,
+                miscellaneousOptions:
+                SymbolDisplayMiscellaneousOptions.EscapeKeywordIdentifiers |
+                SymbolDisplayMiscellaneousOptions.UseSpecialTypes |
+                SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier);
+            
+            TypeName = symbol.ToDisplayString(nameFormat);
+            
+            FullTypeName = $"{symbol.ContainingNamespace}.{TypeName}";
 
             Constructors = GetConstructors();
             ExplictInjectConstructors = GetExplicitInjectConstructors();
