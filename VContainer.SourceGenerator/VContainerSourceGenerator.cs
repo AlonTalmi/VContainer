@@ -79,13 +79,10 @@ namespace VContainer.SourceGenerator
                 throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
             }
 
-            var scope = codeBuilder
+            IScope scope = codeBuilder
                 .AddUsing("System")
                 .AddUsing("System.Collections.Generic")
-                .AddUsing("VContainer")
-                .Space()
-                .AddLine("//Created using CodeBuilder")
-                .Space();
+                .AddUsing("VContainer");
 
             var ns = typeMeta.Symbol.ContainingNamespace;
             if (!ns.IsGlobalNamespace)
@@ -224,7 +221,7 @@ namespace VContainer.SourceGenerator
                 }
 
                 // verify method
-                if (typeMeta.InjectMethods.Count > 1)
+                if (typeMeta.InjectMethods.Any(symbol => symbol.IsGenericMethod))
                 {
                     throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
                 }
