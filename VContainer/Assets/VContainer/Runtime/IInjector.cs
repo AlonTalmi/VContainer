@@ -7,4 +7,9 @@ namespace VContainer
         void Inject(object instance, IObjectResolver resolver, IReadOnlyList<IInjectParameter> parameters);
         object CreateInstance(IObjectResolver resolver, IReadOnlyList<IInjectParameter> parameters);
     }
+
+    public interface IInjectable
+    {
+        void Inject(IObjectResolver resolver, IReadOnlyList<IInjectParameter> parameters);
+    }
 }

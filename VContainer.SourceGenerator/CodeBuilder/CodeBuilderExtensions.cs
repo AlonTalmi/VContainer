@@ -18,6 +18,7 @@ namespace VContainer.SourceGenerator.CodeBuilder
                 AccessibilityLevel.Private => "private",
                 AccessibilityLevel.ProtectedInternal => "protected internal",
                 AccessibilityLevel.PrivateProtected => "private protected",
+                AccessibilityLevel.Explicit => string.Empty,
                 _ => throw new ArgumentOutOfRangeException(nameof(accessibilityLevel), accessibilityLevel, null)
             };
         }
@@ -39,6 +40,10 @@ namespace VContainer.SourceGenerator.CodeBuilder
             return scope.StartScope(definition.CreateStructStartLine(structName));
         }
 
+        public static IScope StartMethodScope(this IScope scope, MethodDefinition definition, string returnType, string methodName, params (string paramType, string paramName)[] parameters)
+        {
+            return scope.StartScope(definition.CreateStartLine(returnType, methodName, parameters));
+        }
         public static IScope StartMethodScope(this IScope scope, AccessibilityLevel accessibilityLevel, string returnType, string methodName, params (string paramType, string paramName)[] parameters)
         {
             var stringBuilder = new StringBuilder();

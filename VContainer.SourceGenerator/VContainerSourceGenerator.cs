@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using VContainer.SourceGenerator.CodeBuilder;
@@ -26,11 +27,49 @@ namespace VContainer.SourceGenerator
 
             var codeWriter = new CodeWriter();
             var builder = new CodeBuilder.CodeBuilder();
+            var generated = new List<GeneratedClass>();
             var syntaxCollector = (SyntaxCollector)context.SyntaxReceiver!;
             foreach (var workItem in syntaxCollector.WorkItems)
             {
                 var typeMeta = workItem.Analyze(in context, references);
-                if (typeMeta is null) continue;
+                if (typeMeta is null)
+                {
+                    continue;
+                }
+                
+                generated.Clear();
+                
+                if (typeMeta.IsInjectedThroughPartialClass || typeMeta.IsCreatedThroughPartialClass)
+                {
+                    codeWriter.Clear();
+                    builder.Clear();
+
+                    try
+                    {
+                        BuildPartialInjectableForType(builder, typeMeta, references);
+                        builder.WriteTo(codeWriter);
+
+                        var partialClassName = $"{typeMeta.Symbol.ContainingNamespace}.{typeMeta.Symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat)}";
+                        var content = codeWriter.ToString();
+                        generated.Add(new GeneratedClass(partialClassName, content));
+                    }
+                    catch (CodeBuildFailedException codeBuildFailedException)
+                    {
+                        if (typeMeta.ExplicitInjectable)
+                        {
+                            context.ReportDiagnostic(Diagnostic.Create(
+                                codeBuildFailedException.descriptor,
+                                typeMeta.Syntax.Identifier.GetLocation(),
+                                typeMeta.Symbol.Name));
+                        }
+                        
+                        continue;
+                    }
+                    catch
+                    {
+                        continue;
+                    }
+                }
 
                 codeWriter.Clear();
                 builder.Clear();
@@ -38,7 +77,14 @@ namespace VContainer.SourceGenerator
                 try
                 {
                     BuildInjectorForType(builder, typeMeta, references);
-                    builder.Build(codeWriter);
+                    builder.WriteTo(codeWriter);
+                    
+                    var injectorName = $"{typeMeta.FullTypeName}GeneratedInjector"
+                        .Replace("<", "_")
+                        .Replace(">", "_")
+                        .Replace(".", "_");
+                    
+                    generated.Add(new GeneratedClass(injectorName, codeWriter.ToString()));
                 }
                 catch (CodeBuildFailedException codeBuildFailedException)
                 {
@@ -52,13 +98,19 @@ namespace VContainer.SourceGenerator
 
                     continue;
                 }
+                catch
+                {
+                    continue;
+                }
 
-                var fullType = typeMeta.FullTypeName
-                    .Replace("<", "_")
-                    .Replace(">", "_")
-                    .Replace(".", "_");
-
-                context.AddSource($"{fullType}GeneratedInjector.g.cs", codeWriter.ToString());
+                foreach (var generatedClass in generated)
+                {
+                    if(string.IsNullOrWhiteSpace(generatedClass.Name) || string.IsNullOrWhiteSpace(generatedClass.Content))
+                        continue;
+                    
+                    var sourceName = $"{generatedClass.Name}.g.cs";
+                    context.AddSource(sourceName, generatedClass.Content);
+                }
             }
         }
 
@@ -113,14 +165,27 @@ namespace VContainer.SourceGenerator
             {
                 throw new CodeBuildFailedException(DiagnosticDescriptors.MultipleCtorAttributeNotSupported);
             }
+            
+            IMethodSymbol? constructorSymbol;
 
-            var constructorSymbol = typeMeta.ExplictInjectConstructors.Count == 1
-                ? typeMeta.ExplictInjectConstructors.First()
-                : typeMeta.Constructors.OrderByDescending(ctor => ctor.Parameters.Length).FirstOrDefault();
+            if (typeMeta.IsCreatedThroughPartialClass)
+            {
+                constructorSymbol = typeMeta.ExplictInjectConstructors.First();
+            }
+            else
+            {
+                constructorSymbol
+                    = typeMeta.ExplictInjectConstructors
+                          .FirstOrDefault(symbol => symbol.CanBeCallFromInternal())
+                      ?? typeMeta.Constructors
+                          .OrderByDescending(ctor => ctor.CanBeCallFromInternal())
+                          .ThenByDescending(ctor => ctor.Parameters.Length)
+                          .FirstOrDefault();
+            }
 
             if (constructorSymbol != null)
             {
-                if (!constructorSymbol.CanBeCallFromInternal())
+                if (!typeMeta.IsCreatedThroughPartialClass && !constructorSymbol.CanBeCallFromInternal())
                 {
                     throw new CodeBuildFailedException(DiagnosticDescriptors.PrivateConstructorNotSupported);
                 }
@@ -141,8 +206,14 @@ namespace VContainer.SourceGenerator
             if (references.UnityEngineComponent != null &&
                 typeMeta.InheritsFrom(references.UnityEngineComponent))
             {
-                scope.AddLine(
-                    $"throw new NotSupportedException(\"UnityEngine.Component:{typeMeta.TypeName} cannot be `new`\");");
+                scope.AddLine($"throw new NotSupportedException(\"UnityEngine.Component:{typeMeta.TypeName} cannot be `new`\");");
+            }
+            else if(typeMeta.IsCreatedThroughPartialClass)
+            {
+                scope
+                    .AddLine($"{typeMeta.TypeName} __instance = {typeMeta.TypeName}.__CreateInstanceGenerated(resolver, parameters);")
+                    .AddLine("Inject(__instance, resolver, parameters);")
+                    .AddLine("return __instance;");
             }
             else if (constructorSymbol is null)
             {
@@ -195,7 +266,7 @@ namespace VContainer.SourceGenerator
                 // verify field
                 foreach (var fieldSymbol in typeMeta.InjectFields)
                 {
-                    if (!fieldSymbol.CanBeCallFromInternal())
+                    if (!typeMeta.IsInjectedThroughPartialClass && !fieldSymbol.CanBeCallFromInternal())
                     {
                         throw new CodeBuildFailedException(DiagnosticDescriptors.PrivateFieldNotSupported);
                     }
@@ -209,7 +280,7 @@ namespace VContainer.SourceGenerator
                 // verify property
                 foreach (var propSymbol in typeMeta.InjectProperties)
                 {
-                    if (!propSymbol.CanBeCallFromInternal())
+                    if (!typeMeta.IsInjectedThroughPartialClass && !propSymbol.CanBeCallFromInternal())
                     {
                         throw new CodeBuildFailedException(DiagnosticDescriptors.PrivatePropertyNotSupported);
                     }
@@ -221,13 +292,29 @@ namespace VContainer.SourceGenerator
                 }
 
                 // verify method
-                if (typeMeta.InjectMethods.Any(symbol => symbol.IsGenericMethod))
-                {
-                    throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
-                }
 
+                foreach (var method in typeMeta.InjectMethods)
+                {
+                    if (!typeMeta.IsInjectedThroughPartialClass && !method.CanBeCallFromInternal())
+                    {
+                        throw new CodeBuildFailedException(DiagnosticDescriptors.PrivateMethodNotSupported);
+                    }
+                    
+                    if (method.IsGenericMethod)
+                    {
+                        throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
+                    }   
+                }
+                
                 scope.AddLine($"var __x = ({typeMeta.TypeName})instance;");
 
+                if (typeMeta.IsInjectedThroughPartialClass)
+                {
+                    //void Inject(IObjectResolver resolver, IReadOnlyList<IInjectParameter> parameters);
+                    scope.AddLine("__x.__InjectGenerated(resolver, parameters);");
+                    return;
+                }
+                
                 foreach (var fieldSymbol in typeMeta.InjectFields)
                 {
                     var fieldTypeName = fieldSymbol.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
@@ -261,6 +348,194 @@ namespace VContainer.SourceGenerator
 
                     var arguments = parameters.Select(x => $"({x.paramType})__{x.paramName}");
                     scope.AddLine($"__x.{methodSymbol.Name}({string.Join(", ", arguments)});");
+                }
+            }
+        }
+        
+        static void BuildPartialInjectableForType(CodeBuilder.CodeBuilder codeBuilder, TypeMeta typeMeta, ReferenceSymbols references)
+        {
+            if (typeMeta.IsNested())
+            {
+                throw new CodeBuildFailedException(DiagnosticDescriptors.PrivateNestedNotSupported);
+            }
+
+            if (typeMeta.Symbol.IsAbstract)
+            {
+                throw new CodeBuildFailedException(DiagnosticDescriptors.AbstractNotAllow);
+            }
+
+            if (typeMeta.IsGenerics)
+            {
+                throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
+            }
+
+            IScope scope = codeBuilder
+                .AddUsing("System")
+                .AddUsing("System.Collections.Generic")
+                .AddUsing("VContainer");
+
+            var ns = typeMeta.Symbol.ContainingNamespace;
+            if (!ns.IsGlobalNamespace)
+            {
+                scope = scope.StartNamespaceScope(ns.ToString());
+            }
+
+            var definition = ObjectDefinition.ClassDefault.AndPartial();
+
+            var typeName = typeMeta.Symbol.ToDisplayString(SymbolDisplayFormat.MinimallyQualifiedFormat);
+
+            scope = scope.StartClassScope(typeName, definition);
+            scope.Space();
+
+            if (typeMeta.IsCreatedThroughPartialClass)
+            {
+                CreateInstanceMethodPartial(scope, typeMeta, references);
+                scope.Space();
+            }
+
+            if (typeMeta.IsInjectedThroughPartialClass)
+            {
+                CreateInjectMethodPartial(scope, typeMeta);
+                scope.Space();
+            }
+        }
+        
+        static void CreateInstanceMethodPartial(IScope scope, TypeMeta typeMeta, ReferenceSymbols references)
+        {
+            if (typeMeta.ExplictInjectConstructors.Count > 1)
+            {
+                throw new CodeBuildFailedException(DiagnosticDescriptors.MultipleCtorAttributeNotSupported);
+            }
+
+            var constructorSymbol = typeMeta.ExplictInjectConstructors.Count == 1
+                ? typeMeta.ExplictInjectConstructors.First()
+                : typeMeta.Constructors.OrderByDescending(ctor => ctor.Parameters.Length).FirstOrDefault();
+
+            if (constructorSymbol != null)
+            {
+                if (constructorSymbol.Arity > 0)
+                {
+                    throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
+                }
+            }
+
+            var definition = MethodDefinition.Default.AndStatic();
+
+            scope = scope.StartMethodScope(
+                definition,
+                typeMeta.TypeName,
+                "__CreateInstanceGenerated",
+                ("IObjectResolver", "resolver"),
+                ("IReadOnlyList<IInjectParameter>", "parameters"));
+
+            if (references.UnityEngineComponent != null &&
+                typeMeta.InheritsFrom(references.UnityEngineComponent))
+            {
+                scope.AddLine($"throw new NotSupportedException(\"UnityEngine.Component:{typeMeta.TypeName} cannot be `new`\");");
+            }
+            else if (constructorSymbol is null)
+            {
+                scope
+                    .AddLine($"return new {typeMeta.TypeName}();");
+            }
+            else
+            {
+                var parameters = constructorSymbol.Parameters
+                    .Select(param =>
+                    {
+                        var paramType =
+                            param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                        var paramName = param.Name;
+                        return (paramType, paramName);
+                    })
+                    .ToArray();
+
+                var resolveLines = parameters.Select(param => $"{param.paramType} __{param.paramName} = ({param.paramType})resolver.ResolveOrParameter(typeof({param.paramType}), \"{param.paramName}\", parameters);");
+                var arguments = parameters.Select(x => $"__{x.paramName}");
+
+                scope
+                    .AddLines(resolveLines)
+                    .AddLine($"return new {typeMeta.TypeName}({string.Join(", ", arguments)});");
+            }
+        }
+
+        static void CreateInjectMethodPartial(IScope scope, TypeMeta typeMeta)
+        {
+            scope = scope.StartMethodScope(
+                AccessibilityLevel.Public,
+                "void",
+                "__InjectGenerated",
+                ("IObjectResolver", "resolver"),
+                ("IReadOnlyList<IInjectParameter>", "parameters"));
+
+            if (typeMeta.InjectFields.Count <= 0 &&
+                typeMeta.InjectProperties.Count <= 0 &&
+                typeMeta.InjectMethods.Count <= 0)
+            {
+                scope.AddLine("return;");
+            }
+            else
+            {
+                // verify field
+                foreach (var fieldSymbol in typeMeta.InjectFields)
+                {
+                    if (fieldSymbol.Type is ITypeParameterSymbol)
+                    {
+                        throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
+                    }
+                }
+
+                // verify property
+                foreach (var propSymbol in typeMeta.InjectProperties)
+                {
+                    if (propSymbol.Type is ITypeParameterSymbol)
+                    {
+                        throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
+                    }
+                }
+
+                // verify method
+                foreach (var method in typeMeta.InjectMethods)
+                {
+                    if (method.IsGenericMethod)
+                    {
+                        throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
+                    }
+                }
+
+                foreach (var fieldSymbol in typeMeta.InjectFields)
+                {
+                    var fieldTypeName = fieldSymbol.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+                    scope.AddLine($"{fieldSymbol.Name} = ({fieldTypeName})resolver.ResolveOrParameter(typeof({fieldTypeName}), \"{fieldSymbol.Name}\", parameters);");
+                }
+
+                foreach (var propSymbol in typeMeta.InjectProperties)
+                {
+                    var propTypeName = propSymbol.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+
+                    scope.AddLine($"{propSymbol.Name} = ({propTypeName})resolver.ResolveOrParameter(typeof({propTypeName}), \"{propSymbol.Name}\", parameters);");
+                }
+
+                foreach (var methodSymbol in typeMeta.InjectMethods)
+                {
+                    var parameters = methodSymbol.Parameters
+                        .Select(param =>
+                        {
+                            var paramType =
+                                param.Type.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat);
+                            var paramName = param.Name;
+                            return (paramType, paramName);
+                        })
+                        .ToArray();
+
+                    foreach (var (paramType, paramName) in parameters)
+                    {
+                        scope.AddLine($"var __{paramName} = resolver.ResolveOrParameter(typeof({paramType}), \"{paramName}\", parameters);");
+                    }
+
+                    var arguments = parameters.Select(x => $"({x.paramType})__{x.paramName}");
+                    scope.AddLine($"{methodSymbol.Name}({string.Join(", ", arguments)});");
                 }
             }
         }

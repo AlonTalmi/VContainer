@@ -37,17 +37,15 @@ namespace VContainer.SourceGenerator.CodeBuilder
             {
                 using (writer.BeginBlockScope(scope.StartLine))
                 {
-                    scope.Build(writer);
+                    scope.WriteTo(writer);
                 }
             }
-            public IScope Build(CodeWriter codeWriter)
+            public void WriteTo(CodeWriter codeWriter)
             {
                 foreach (var action in codeOrder)
                 {
                     action?.Invoke(codeWriter);
                 }
-
-                return this;
             }
             public IScope Break()
             {
@@ -82,10 +80,9 @@ namespace VContainer.SourceGenerator.CodeBuilder
             return root.StartScope(startLine);
         }
 
-        public IScope Build(CodeWriter codeWriter)
+        public void WriteTo(CodeWriter codeWriter)
         {
-            root.Build(codeWriter);
-            return this;
+            root.WriteTo(codeWriter);
         }
 
         public CodeBuilder AddUsing(string nameSpace)

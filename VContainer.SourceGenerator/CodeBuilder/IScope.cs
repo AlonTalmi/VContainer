@@ -8,7 +8,7 @@ namespace VContainer.SourceGenerator.CodeBuilder
         IScope AddLineToScopeStart(string line);
         IScope AddLine(string line);
         IScope StartScope(string startLine);
-        IScope Build(CodeWriter codeWriter);
+        void WriteTo(CodeWriter codeWriter);
         IScope Break();
     }
 }

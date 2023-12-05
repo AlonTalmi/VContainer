@@ -15,7 +15,7 @@ public abstract class AbstractClass
     }
 }
 
-//Not generic or abstract
+//Not generic, partial or abstract
 public class BasicClass
 {
     readonly int a1;
@@ -23,7 +23,7 @@ public class BasicClass
 
     //Multiple public field is supported
     [Inject] public int b1;
-    //[Inject] public int b2;
+    [Inject] public int b2;
     
     //Multiple public properties is supported (even if getter is private)
     [Inject] public int C1 { private get; set; }

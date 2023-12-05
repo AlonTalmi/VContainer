@@ -12,6 +12,7 @@ namespace VContainer.SourceGenerator.CodeBuilder
         public AccessibilityLevel AccessibilityLevel { get; set; } = AccessibilityLevel.Public;
         public bool IsStatic { get; set; }
         public bool IsReadOnly { get; set; }
+        public bool IsPartial { get; set; }
         public List<string> Interfaces { get; } = new List<string>();
         public List<string> GenericTypes { get; } = new List<string>();
 
@@ -24,6 +25,12 @@ namespace VContainer.SourceGenerator.CodeBuilder
         public ObjectDefinition WithGenericType(string genericTypeName)
         {
             GenericTypes.Add(genericTypeName);
+            return this;
+        }
+
+        public ObjectDefinition AndPartial()
+        {
+            IsPartial = true;
             return this;
         }
 
@@ -42,6 +49,7 @@ namespace VContainer.SourceGenerator.CodeBuilder
             {
                 yield return AccessibilityLevel.GetAccessibilityLevelName();
                 yield return IsReadOnly ? "readonly" : null;
+                yield return IsPartial ? "partial" : null;
                 yield return "struct";
                 yield return name;
             }
@@ -62,6 +70,7 @@ namespace VContainer.SourceGenerator.CodeBuilder
             {
                 yield return AccessibilityLevel.GetAccessibilityLevelName();
                 yield return IsStatic ? "static" : null;
+                yield return IsPartial ? "partial" : null;
                 yield return "class";
                 yield return name;
             }

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace VContainer.SourceGenerator
@@ -12,6 +13,8 @@ namespace VContainer.SourceGenerator
         public string TypeName { get; }
         public string FullTypeName { get; }
         public bool ExplicitInjectable { get; }
+        public bool IsInjectedThroughPartialClass { get; }
+        public bool IsCreatedThroughPartialClass { get; }
 
         public IReadOnlyList<IMethodSymbol> Constructors { get; }
         public IReadOnlyList<IMethodSymbol> ExplictInjectConstructors { get; }
@@ -65,6 +68,17 @@ namespace VContainer.SourceGenerator
                                  InjectFields.Count > 0 ||
                                  InjectProperties.Count > 0 ||
                                  InjectMethods.Count > 0;
+
+            IsInjectedThroughPartialClass
+                = ExplicitInjectable
+                  && IsPartial()
+                  && RequiresPartialInjector();
+
+            IsCreatedThroughPartialClass
+                = ExplicitInjectable
+                  && IsPartial()
+                  && ExplictInjectConstructors.Count == 1
+                  && ExplictInjectConstructors.Any(methodSymbol => !methodSymbol.CanBeCallFromInternal());
         }
 
         public bool InheritsFrom(INamedTypeSymbol baseSymbol)
@@ -133,6 +147,18 @@ namespace VContainer.SourceGenerator
         public bool IsNested()
         {
             return Syntax.Parent is TypeDeclarationSyntax;
+        }
+
+        public bool IsPartial()
+        {
+            return Syntax.Modifiers.Any(SyntaxKind.PartialKeyword);
+        }
+
+        private bool RequiresPartialInjector()
+        {
+            return InjectFields.Any(field => !field.CanBeCallFromInternal())
+                   || InjectProperties.Any(property => !property.CanBeCallFromInternal())
+                   || InjectMethods.Any(method => !method.CanBeCallFromInternal());
         }
     }
 }

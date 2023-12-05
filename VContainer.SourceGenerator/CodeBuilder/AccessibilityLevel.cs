@@ -7,6 +7,7 @@ namespace VContainer.SourceGenerator.CodeBuilder
         Protected,
         Private,
         ProtectedInternal,
-        PrivateProtected
+        PrivateProtected,
+        Explicit
     }
 }
