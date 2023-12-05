@@ -271,6 +271,11 @@ namespace VContainer.SourceGenerator
                         throw new CodeBuildFailedException(DiagnosticDescriptors.PrivateFieldNotSupported);
                     }
 
+                    if (fieldSymbol.IsReadOnly)
+                    {
+                        throw new CodeBuildFailedException(DiagnosticDescriptors.ReadonlyFieldNotSupported);
+                    }
+
                     if (fieldSymbol.Type is ITypeParameterSymbol)
                     {
                         throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
@@ -283,6 +288,11 @@ namespace VContainer.SourceGenerator
                     if (!typeMeta.IsInjectedThroughPartialClass && !propSymbol.CanBeCallFromInternal())
                     {
                         throw new CodeBuildFailedException(DiagnosticDescriptors.PrivatePropertyNotSupported);
+                    }
+                    
+                    if (propSymbol.IsReadOnly)
+                    {
+                        throw new CodeBuildFailedException(DiagnosticDescriptors.ReadonlyPropertyNotSupported);
                     }
 
                     if (propSymbol.Type is ITypeParameterSymbol)
@@ -479,6 +489,11 @@ namespace VContainer.SourceGenerator
                 // verify field
                 foreach (var fieldSymbol in typeMeta.InjectFields)
                 {
+                    if (fieldSymbol.IsReadOnly)
+                    {
+                        throw new CodeBuildFailedException(DiagnosticDescriptors.ReadonlyFieldNotSupported);
+                    }
+                    
                     if (fieldSymbol.Type is ITypeParameterSymbol)
                     {
                         throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);
@@ -488,6 +503,11 @@ namespace VContainer.SourceGenerator
                 // verify property
                 foreach (var propSymbol in typeMeta.InjectProperties)
                 {
+                    if (propSymbol.IsReadOnly)
+                    {
+                        throw new CodeBuildFailedException(DiagnosticDescriptors.ReadonlyPropertyNotSupported);
+                    }
+                    
                     if (propSymbol.Type is ITypeParameterSymbol)
                     {
                         throw new CodeBuildFailedException(DiagnosticDescriptors.GenericsNotSupported);

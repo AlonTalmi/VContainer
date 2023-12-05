@@ -85,5 +85,21 @@ namespace VContainer.SourceGenerator
             category: Category,
             defaultSeverity: DiagnosticSeverity.Warning,
             isEnabledByDefault: true);
+        
+        public static readonly DiagnosticDescriptor ReadonlyFieldNotSupported = new(
+            id: "VCON0011",
+            title: "The readonly [Inject] field is not supported to code generation.",
+            messageFormat: "The [Inject] field '{0}' does not have accessible to set a readonly member. It cannot support to inject by the source generator.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
+        
+        public static readonly DiagnosticDescriptor ReadonlyPropertyNotSupported = new(
+            id: "VCON0012",
+            title: "The readonly [Inject] property is not supported to code generation",
+            messageFormat: "The [Inject] '{0}' does not have accessible to set a readonly member. It cannot support to inject by the source generator.",
+            category: Category,
+            defaultSeverity: DiagnosticSeverity.Warning,
+            isEnabledByDefault: true);
     }
 }
