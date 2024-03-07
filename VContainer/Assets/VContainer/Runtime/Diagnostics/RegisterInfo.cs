@@ -12,14 +12,14 @@ namespace VContainer.Diagnostics
         static int idSeed;
 
         public int Id { get; }
-        public RegistrationBuilder RegistrationBuilder { get; }
+        public IRegistrationBuilder RegistrationBuilder { get; }
         public StackTrace StackTrace { get; }
 
         StackFrame headLineStackFrame;
 
         internal string formattedStackTrace = default; // cache field for internal use(Unity Editor, etc...)
 
-        public RegisterInfo(RegistrationBuilder registrationBuilder)
+        public RegisterInfo(IRegistrationBuilder registrationBuilder)
         {
             Id = Interlocked.Increment(ref idSeed);
             RegistrationBuilder = registrationBuilder;

@@ -8,16 +8,14 @@ namespace VContainer
     public static class ContainerBuilderExtensions
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder Register(
+        public static IRegistrationBuilder Register(
             this IContainerBuilder builder,
             Type type,
             Lifetime lifetime) =>
-            builder.Register(type.IsGenericType && type.IsGenericTypeDefinition
-                ? new OpenGenericRegistrationBuilder(type, lifetime)
-                : new RegistrationBuilder(type, lifetime));
+            builder.Register(new RegistrationBuilderFacade(type, lifetime));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder Register(
+        public static IRegistrationBuilder Register(
             this IContainerBuilder builder,
             Type interfacetType,
             Type implementationType,
@@ -25,103 +23,103 @@ namespace VContainer
             builder.Register(implementationType, lifetime).As(interfacetType);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder Register<T>(
+        public static IRegistrationBuilder Register<T>(
             this IContainerBuilder builder,
             Lifetime lifetime) =>
             builder.Register(typeof(T), lifetime);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder Register<TInterface, TImplement>(
+        public static IRegistrationBuilder Register<TInterface, TImplement>(
             this IContainerBuilder builder,
             Lifetime lifetime)
             where TImplement : TInterface =>
             builder.Register<TImplement>(lifetime).As<TInterface>();
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder Register<TInterface1, TInterface2, TImplement>(
+        public static IRegistrationBuilder Register<TInterface1, TInterface2, TImplement>(
             this IContainerBuilder builder,
             Lifetime lifetime)
             where TImplement : TInterface1, TInterface2 =>
             builder.Register<TImplement>(lifetime).As(typeof(TInterface1), typeof(TInterface2));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder Register<TInterface1, TInterface2, TInterface3, TImplement>(
+        public static IRegistrationBuilder Register<TInterface1, TInterface2, TInterface3, TImplement>(
             this IContainerBuilder builder,
             Lifetime lifetime)
             where TImplement : TInterface1, TInterface2, TInterface3
             => builder.Register<TImplement>(lifetime).As(typeof(TInterface1), typeof(TInterface2), typeof(TInterface3));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder Register<TInterface>(
+        public static IRegistrationBuilder Register<TInterface>(
             this IContainerBuilder builder,
             Func<IObjectResolver, TInterface> implementationConfiguration,
             Lifetime lifetime)
             => builder.Register(new FuncRegistrationBuilder(container => implementationConfiguration(container), typeof(TInterface), lifetime));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterInstance<TInterface>(
+        public static IRegistrationBuilder RegisterInstance<TInterface>(
             this IContainerBuilder builder,
             TInterface instance)
             => builder.Register(new InstanceRegistrationBuilder(instance)).As(typeof(TInterface));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterInstance<TInterface1, TInterface2>(
+        public static IRegistrationBuilder RegisterInstance<TInterface1, TInterface2>(
             this IContainerBuilder builder,
             TInterface1 instance)
             => builder.RegisterInstance(instance).As(typeof(TInterface1), typeof(TInterface2));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterInstance<TInterface1, TInterface2, TInterface3>(
+        public static IRegistrationBuilder RegisterInstance<TInterface1, TInterface2, TInterface3>(
             this IContainerBuilder builder,
             TInterface1 instance)
             => builder.RegisterInstance(instance).As(typeof(TInterface1), typeof(TInterface2), typeof(TInterface3));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterFactory<T>(
+        public static IRegistrationBuilder RegisterFactory<T>(
             this IContainerBuilder builder,
             Func<T> factory)
             => builder.RegisterInstance(factory);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterFactory<TParam1, T>(
+        public static IRegistrationBuilder RegisterFactory<TParam1, T>(
             this IContainerBuilder builder,
             Func<TParam1, T> factory)
             => builder.RegisterInstance(factory);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterFactory<TParam1, TParam2, T>(
+        public static IRegistrationBuilder RegisterFactory<TParam1, TParam2, T>(
             this IContainerBuilder builder,
             Func<TParam1, TParam2, T> factory)
             => builder.RegisterInstance(factory);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterFactory<TParam1, TParam2, TParam3, T>(
+        public static IRegistrationBuilder RegisterFactory<TParam1, TParam2, TParam3, T>(
             this IContainerBuilder builder,
             Func<TParam1, TParam2, TParam3, T> factory)
             => builder.RegisterInstance(factory);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterFactory<TParam1, TParam2, TParam3, TParam4, T>(
+        public static IRegistrationBuilder RegisterFactory<TParam1, TParam2, TParam3, TParam4, T>(
             this IContainerBuilder builder,
             Func<TParam1, TParam2, TParam3, TParam4, T> factory)
             => builder.RegisterInstance(factory);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterFactory<T>(
+        public static IRegistrationBuilder RegisterFactory<T>(
             this IContainerBuilder builder,
             Func<IObjectResolver, Func<T>> factoryFactory,
             Lifetime lifetime)
             => builder.Register(new FuncRegistrationBuilder(factoryFactory, typeof(Func<T>), lifetime));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterFactory<TParam1, T>(
+        public static IRegistrationBuilder RegisterFactory<TParam1, T>(
             this IContainerBuilder builder,
             Func<IObjectResolver, Func<TParam1, T>> factoryFactory,
             Lifetime lifetime)
             => builder.Register(new FuncRegistrationBuilder(factoryFactory, typeof(Func<TParam1, T>), lifetime));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterFactory<TParam1, TParam2, T>(
+        public static IRegistrationBuilder RegisterFactory<TParam1, TParam2, T>(
             this IContainerBuilder builder,
             Func<IObjectResolver, Func<TParam1, TParam2, T>> factoryFactory,
             Lifetime lifetime)
@@ -135,7 +133,7 @@ namespace VContainer
             => builder.Register(new FuncRegistrationBuilder(factoryFactory, typeof(Func<TParam1, TParam2, TParam3, T>), lifetime));
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static RegistrationBuilder RegisterFactory<TParam1, TParam2, TParam3, TParam4, T>(
+        public static IRegistrationBuilder RegisterFactory<TParam1, TParam2, TParam3, TParam4, T>(
             this IContainerBuilder builder,
             Func<IObjectResolver, Func<TParam1, TParam2, TParam3, TParam4, T>> factoryFactory,
             Lifetime lifetime)

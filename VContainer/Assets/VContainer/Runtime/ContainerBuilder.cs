@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using VContainer.Diagnostics;
 using VContainer.Internal;
@@ -14,9 +15,9 @@ namespace VContainer
         object ApplicationOrigin { get; set; }
         DiagnosticsCollector Diagnostics { get; set; }
         int Count { get; }
-        RegistrationBuilder this[int index] { get; set; }
+        IRegistrationBuilder this[int index] { get; set; }
 
-        T Register<T>(T registrationBuilder) where T : RegistrationBuilder;
+        T Register<T>(T registrationBuilder) where T : IRegistrationBuilder;
         void RegisterBuildCallback(Action<IObjectResolver> container);
         bool Exists(Type type, bool includeInterfaceTypes = false, bool findParentScopes = false);
     }
@@ -77,7 +78,7 @@ namespace VContainer
 
         public int Count => registrationBuilders.Count;
 
-        public RegistrationBuilder this[int index]
+        public IRegistrationBuilder this[int index]
         {
             get => registrationBuilders[index];
             set => registrationBuilders[index] = value;
@@ -93,12 +94,12 @@ namespace VContainer
             }
         }
 
-        readonly List<RegistrationBuilder> registrationBuilders = new List<RegistrationBuilder>();
+        readonly List<IRegistrationBuilder> registrationBuilders = new List<IRegistrationBuilder>();
         Action<IObjectResolver> buildCallback;
         DiagnosticsCollector diagnostics;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public T Register<T>(T registrationBuilder) where T : RegistrationBuilder
+        public T Register<T>(T registrationBuilder) where T : IRegistrationBuilder
         {
             registrationBuilders.Add(registrationBuilder);
             Diagnostics?.TraceRegister(new RegisterInfo(registrationBuilder));

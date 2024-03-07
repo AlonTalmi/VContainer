@@ -40,7 +40,7 @@ namespace VContainer.Diagnostics
             }
         }
 
-        public void TraceBuild(RegistrationBuilder registrationBuilder, Registration registration)
+        public void TraceBuild(IRegistrationBuilder registrationBuilder, Registration registration)
         {
             lock (diagnosticsInfos)
             {
